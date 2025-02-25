@@ -98,11 +98,7 @@
 
 ### Алгоритмы:
 - Алгоритм проверки столкновений (тело змеи).  
-- Генерация случайных координат для спавна еды.  
-
-### Библиотеки:
-- Standard Library (STL) для работы с контейнерами и алгоритмами.
-- `<conio.h>` для обработки пользовательского ввода (в зависимости от платформы).  
+- Генерация случайных координат для спавна еды. 
 
 ---
 
@@ -114,7 +110,7 @@
 - Создание плана доработок.  
 
 ### Этап 2: Реализация базовой функциональности
-- Реализация классов `Game`, `Snake`, `Food (Item)`, `Color`, `Settings`, `Interface` и т.п.  
+- Реализация классов `Game`, `Snake`, `Food (Item)`, `Color`, `Settings` и т.п.  
 - Настройка логики движения змеи.  
 - Добавление обработки столкновений.  
 
@@ -138,3 +134,258 @@
 ---
 
 # Отчёт о проделанной работе
+
+---
+
+## 1. Цель работы  
+Разработать консольную версию классической игры "Змейка" с использованием языка программирования C++. Основные задачи включают:  
+- Создание игрового поля с границами.  
+- Реализация движения змеи по полю.  
+- Добавление механики роста змеи при сборе еды.  
+- Реализация системы очков и вывода информации о текущем результате.  
+- Обработка столкновений (стен, хвоста).  
+- Создание пользовательского интерфейса для управления игрой.  
+
+---
+
+## 2. Задачи проекта  
+### 2.1. Функциональные требования  
+- Игровое поле размером NxM клеток.  
+- Генерация случайных координат для еды.  
+- Возможность управления движением змеи (стрелками клавиатуры).  
+- Увеличение длины змеи при сборе еды.  
+- Вывод текущего количества очков.  
+- Конец игры при столкновении с границами или самим собой.  
+
+### 2.2. Нелифункциональные требования  
+- Простота использования.  
+- Высокая производительность (минимальная задержка обработки ввода).  
+- Кроссплатформенность (возможность запуска на разных операционных системах).  
+
+---
+
+## 3. Архитектура программы  
+Программа была разбита на следующие основные компоненты:  
+
+### 3.1. Структура проекта  
+```plaintext
+The-snake-game-on-the-console/
+│
+├── main.cpp                # Главный файл программы
+├── Snake.h                 # Заголовочный файл для класса Snake
+├── Snake.cpp               # Реализация класса Snake
+├── Game.h                  # Заголовочный файл для класса Game
+├── Game.cpp                # Реализация класса Game
+└── README.md               # Описание проекта
+```
+
+### 3.2. Основные классы  
+
+#### 3.2.1. Класс `Snake`  
+Отвечает за логику управления змеёй:  
+- Хранение координат тела змеи.  
+- Движение в определённом направлении.  
+- Проверка на столкновение с хвостом.  
+- Рост змеи при сборе еды.  
+
+Методы:  
+- `move()`: Перемещает змею в выбранном направлении.  
+- `grow()`: Увеличивает длину змеи.  
+- `checkCollision()`: Проверяет столкновение с хвостом.  
+
+#### 3.2.2. Класс `Game`  
+Управляет игровым процессом:  
+- Инициализация игрового поля.  
+- Генерация еды.  
+- Обработка ввода пользователя.  
+- Проверка условий окончания игры.  
+
+Методы:  
+- `start()`: Запускает игру.  
+- `GenerateItem()`: Создаёт новую еду на игровом поле.  
+- `MapBorder()`: Рисует игровое поле в консоли.
+
+---
+
+## 4. Реализация  
+
+### 4.1. Инициализация игры
+
+Старт самой игры:
+```cpp
+void Game::Start() {
+	system("mode con: cols=51 lines=23");
+
+	snake._lengthSnake = 0;
+	snake._tail.clear();
+	snake._lastKeyPressed = 'w';
+
+	Setting::HideCursor();
+	Setting::sizeWindow();
+
+	int consoleWidth = Setting::getConsoleWidth();
+	int consoleHeight = Setting::getConsoleHeight();
+	int centerX = consoleWidth / 2;
+	int centerY = consoleHeight / 2;
+
+	centerX -= 1;
+
+	snake._headPosition.X = centerX;
+	snake._headPosition.Y = centerY;
+
+
+
+	GenerateItem();
+}
+```
+
+Границы поля отображаются символами '~', '|':  
+```cpp
+void Game::MapBorder() {
+	Color::SetTextColor(Color::DARK_GRAY);
+	// Up border
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), COORD{ 0, 0 });
+	std::cout << std::string(Setting::getConsoleWidth(), '~');
+
+	// Down border
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), COORD{ 0, 19 });
+	std::cout << std::string(Setting::getConsoleWidth(), '~');
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), COORD{ 0, 22 });
+	std::cout << std::string(Setting::getConsoleWidth(), '~');
+
+	// Left and Right border
+	for (size_t i = 0; i < Setting::getConsoleHeight(); ++i) {
+		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), COORD{ 1, (short)i });
+		std::cout << "|";
+		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), COORD{ 49, (short)i });
+		std::cout << "|";
+	}
+	Color::ResetColors();
+}
+```
+
+### 4.2. Управление змеёй  
+Для управления змеёй используется библиотека `<conio.h>` (для Windows). Например, функция `_kbhit()` проверяет, была ли нажата клавиша, а `getch()` считывает её.  
+
+Пример обработки ввода:  
+```cpp
+void Game::HandleInput() {
+	if (_kbhit()) {
+		char input = _getch();
+		if (
+			(input == 'd' && snake._lastKeyPressed != 'a') ||
+			(input == 'a' && snake._lastKeyPressed != 'd') ||
+			(input == 'w' && snake._lastKeyPressed != 's') ||
+			(input == 's' && snake._lastKeyPressed != 'w'))
+		{
+			snake._lastKeyPressed = input;
+		}
+		else if ((input == 'r'))
+		{
+			IsGame = false;
+		}
+	}
+}
+```
+
+### 4.3. Генерация еды  
+Еда генерируется случайным образом в свободной клетке поля:  
+```cpp
+void Game::GenerateItem() {
+	COORD Item;
+	bool isPositionValid = false;
+
+	if (snake._lengthSnake < 432)
+	{
+		while (!isPositionValid) {
+			Item.X = Setting::generatePosistion(2, 24) * 2;
+			Item.Y = Setting::generatePosistion(1, 18);
+
+			isPositionValid = true;
+
+			for (const auto& segment : snake._tail) {
+				if (segment.X == Item.X && segment.Y == Item.Y) {
+					isPositionValid = false;
+					break;
+				}
+			}
+
+			if (snake._headPosition.X == Item.X && snake._headPosition.Y == Item.Y) {
+				isPositionValid = false;
+			}
+		}
+
+		item.SetPosition(Item.X, Item.Y);
+	}
+	else
+	{
+		IsGame = false;
+	}
+}
+```
+
+### 4.4. Проверка столкновений  
+При каждом шаге проверяется, не столкнулась ли змея со стеной или своим хвостом:  
+```cpp
+void Game::CheckCollision() {
+	if (snake.CheckCollision(snake._headPosition)) {
+		IsGame = false;
+	}
+
+	if (snake._headPosition.X == item._itemPosition.X && snake._headPosition.Y == item._itemPosition.Y)
+	{
+		GenerateItem();
+		snake.Grow();
+	}
+}
+```
+
+### 4.5. Рисование игрового поля  
+Игровое поле отрисовывается в консоли с помощью циклов:  
+```cpp
+void Game::Update() {
+	while (IsGame) {
+		Info();
+		MapBorder();
+
+		HandleInput();
+		snake.Update();
+
+		CheckCollision();
+
+		snake.Draw();
+		item.Draw();
+
+		Sleep(100);
+	}
+	ResetGame();
+}
+
+```
+
+---
+
+## 5. Тестирование  
+В процессе разработки проводилось тестирование различных сценариев:  
+- Корректное движение змеи.  
+- Сбор еды и увеличение длины.  
+- Столкновение с границами и хвостом.  
+- Корректное отображение очков.  
+
+---
+
+## 6. Результаты работы  
+По итогам реализации получено полностью рабочее консольное приложение, которое позволяет играть в "Змейку". Приложение соответствует всем поставленным требованиям и работает корректно.  
+
+---
+
+## 7. Выводы  
+В рамках данной работы была успешно реализована игра "Змейка" в консольном приложении на языке C++. Были применены основные принципы объектно-ориентированного программирования, что позволило создать модульную и легко поддерживаемую структуру кода. Проект размещен в репозитории GitHub: [Ссылка на репозиторий](https://github.com/sksi1217/The-snake-game-on-the-console).  
+
+---
+
+## 8. Возможные улучшения  
+1. Добавление уровней сложности (увеличение скорости со временем).  
+2. Сохранение рекордов в файл.  
+3. Добавление звука.
+4. Реализация многопользовательского режима.
